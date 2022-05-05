@@ -1,6 +1,6 @@
 ## Shunted Collision Avoidance (SCA) for Multi-Agent Motion Planning in Three Dimensions
 
-Python Implementation of shunted collision avoidance for multiple fixed-wing UAVs motion planning.
+Python Implementation of shunted collision avoidance for multiple fixed-wing UAVs motion planning, including our method, namely shunted collision avoidance (SCA), the reciprocal volocity obstacles in 3D domains (RVO3D), and the  optimal reciprocal collision avoidance in 3D domains (ORCA3D) .
 
 -----
 
