@@ -1,0 +1,8 @@
+__pycache__
+.idea
+visualization/orca3d
+visualization/rvo3d
+visualization/rvo3d_dubins
+visualization/sca
+visualization/srvo3d
+
