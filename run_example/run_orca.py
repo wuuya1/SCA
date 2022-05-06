@@ -14,9 +14,6 @@ from mamp.util import mod2pi
 
 
 def set_circle_pos(agent_num):
-    """
-    exp4: The rad is 18.0 for evaluation.
-    """
     center = (0.0, 0.0)
     rad = 18.0
     k = 0
@@ -37,9 +34,6 @@ def set_circle_pos(agent_num):
 
 
 def set_sphere(num_N):
-    """
-    exp4: The rad is 25.0 and z_value is 30.0 for evaluation.
-    """
     agent_origin_pos = []
     agent_pos = []
     agent_goal = []
@@ -61,10 +55,6 @@ def set_sphere(num_N):
 
 
 def set_random_pos(agent_num):
-    """
-    exp4: The r is 15.0, z_value is 30.0.
-    If collision occurs in the start stage, run this program again.
-    """
     agent_origin_pos = []
     agent_pos = []
     agent_goal = []

@@ -14,11 +14,6 @@ from mamp.util import mod2pi
 
 
 def set_circle_pos(agent_num):
-    """
-    exp1: The rad is 10.0.
-    exp3: The rad is 10.0.
-    exp5: The rad is 40.0.
-    """
     center = (0.0, 0.0)
     rad = 10.0
     k = 0
@@ -39,10 +34,6 @@ def set_circle_pos(agent_num):
 
 
 def set_random_pos(agent_num):
-    """
-    exp5: The r is 25.0, z_value is 30.0.
-    If collision occurs in the start stage, run this program again.
-    """
     agent_origin_pos = []
     agent_pos = []
     agent_goal = []
@@ -63,49 +54,12 @@ def set_random_pos(agent_num):
     return agent_pos, agent_goal, agent_origin_pos
 
 
-def set_takeoff_landing_pos(agent_num):
-    rad = 4.0
-    center = (0.0, 0.0)
-    landing_num = agent_num - int(agent_num / 2)
-    takeoff_num = int(agent_num / 2)
-    z_plane_landing, z_plane_takeoff = 10.0, 0.0
-    agent_origin_pos, agent_pos, agent_goal = [], [], []
-
-    # takeoff
-    for j in range(landing_num):
-        agent_pos.append([center[0] + round(rad * np.cos(2 * j * np.pi / landing_num), 2),
-                          center[1] + round(rad * np.sin(2 * j * np.pi / landing_num), 2),
-                          z_plane_landing,
-                          round(np.pi/2, 5), 0, 0])
-        agent_origin_pos.append((agent_pos[j][0], agent_pos[j][1]))
-    for j in range(landing_num, agent_num):
-        agent_pos.append([center[0] + round(rad * np.cos(2 * j * np.pi / takeoff_num), 2),
-                          center[1] + round(rad * np.sin(2 * j * np.pi / takeoff_num), 2),
-                          z_plane_takeoff,
-                          round(-np.pi/2, 5), 0, 0])
-        agent_origin_pos.append((agent_pos[j][0], agent_pos[j][1]))
-
-    # # landing
-    for j in range(landing_num):
-        index = j + landing_num
-        agent_goal.append(agent_pos[index])
-    for j in range(landing_num, agent_num):
-        index = j - takeoff_num
-        agent_goal.append(agent_pos[index])
-
-    return agent_pos, agent_goal, agent_origin_pos
-
-
 def build_agents():
-    """
-    exp5
-    """
     drone_num = 14
     init_vel = [0.0, 0.0, 0.0]
     radius = 0.5
     pref_speed = 1.0
     pos, goal, DroneOriginPos = set_circle_pos(drone_num)
-    # pos, goal, DroneOriginPos = set_takeoff_landing_pos(drone_num)
     # pos, goal, DroneOriginPos = set_random_pos(drone_num)
     agents = []
     for i in range(len(pos)):

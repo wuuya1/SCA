@@ -15,10 +15,6 @@ from mamp.read_map import read_obstacle
 
 
 def set_circle_pos(center, rad, agent_num):
-    """
-    exp1: The rad is 10.0.
-    exp5: The rad is 40.0.
-    """
     k = 0
     agent_pos = []
     agent_goal = []
@@ -35,10 +31,6 @@ def set_circle_pos(center, rad, agent_num):
 
 
 def set_random_pos(agent_num):
-    """
-    exp5: The r is 25.0, z_value is 30.0.
-    If collision occurs in the start stage, run this program again.
-    """
     agent_pos = []
     agent_goal = []
     z_value = 30.0
@@ -59,9 +51,6 @@ def set_random_pos(agent_num):
 
 
 def set_takeoff_landing_pos(agent_num):
-    """
-    exp2: The rad is 4.
-    """
     rad = 4.0
     center = (0.0, 0.0)
     landing_num = agent_num - int(agent_num / 2)
@@ -124,8 +113,8 @@ def build_agents():
     radius = 0.5
     pref_speed = 1.0
     drone_num = 16
-    # pos, goal = set_circle_pos(center=(0, 0), rad=10.0, agent_num=drone_num)
-    pos, goal = set_takeoff_landing_pos(drone_num)
+    pos, goal = set_circle_pos(center=(0, 0), rad=10.0, agent_num=drone_num)
+    # pos, goal = set_takeoff_landing_pos(drone_num)
     # pos, goal = spawn_n_drones(center=(35, 30), rad=10.0, drone_num=drone_num, environment="exp3")
     # pos, goal = set_random_pos(drone_num)
     agents = []
