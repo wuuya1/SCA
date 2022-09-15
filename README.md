@@ -12,7 +12,7 @@ We present an approach for fixed-wing UAVs' collision avoidance, where multiple 
 About
 -----
 
-**Paper**:  Shunted Collision Avoidance for Multi-UAV Motion Planning with Posture Constraints, Gang Xu, Junjie Cao\*, Deye Zhu,  Yong Liu\*, and Jian Yang
+**Paper**:  Shunted Collision Avoidance for Multi-UAV Motion Planning with Posture Constraints, Gang Xu, Deye Zhu, Junjie Cao\*,  Yong Liu\*, and Jian Yang
 
 
 -----
