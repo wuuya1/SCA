@@ -6,6 +6,7 @@
 @ github: https://github.com/comrob/Dubins3D.jl
 """
 
+
 import math
 import numpy as np
 from mamp.util import mod2pi, pi_2_pi
@@ -165,7 +166,7 @@ def dubins_path_planning_from_origin(ex, ey, syaw, eyaw, c):
         if t is None:
             continue
 
-        cost = c * (abs(t) + abs(p) + abs(q))
+        cost = c*(abs(t) + abs(p) + abs(q))
         if bcost > cost:
             bt, bp, bq, bmode = t, p, q, mode
             bcost = cost
@@ -211,8 +212,8 @@ def dubins_path_planning(start_pos, end_pos, c):
     px = [math.cos(-syaw) * x + math.sin(-syaw) * y + sx for x, y in zip(lpx, lpy)]
     py = [-math.sin(-syaw) * x + math.cos(-syaw) * y + sy for x, y in zip(lpx, lpy)]
     pyaw = [pi_2_pi(iyaw + syaw) for iyaw in lpyaw]
-    maneuver.t, maneuver.p, maneuver.q, maneuver.mode = t, p, q, mode
-    maneuver.px, maneuver.py, maneuver.pyaw, maneuver.length = px, py, pyaw, clen
+    maneuver.t, maneuver.p, maneuver.q, maneuver.mode  = t, p, q, mode
+    maneuver.px, maneuver.py, maneuver.pyaw,  maneuver.length = px, py, pyaw, clen
 
     return maneuver
 
@@ -262,8 +263,8 @@ def get_coordinates(maneuver, offset):
 
     l1 = maneuver.t
     l2 = maneuver.p
-    q1 = get_position_in_segment(l1, qi, maneuver.mode[0])
-    q2 = get_position_in_segment(l2, q1, maneuver.mode[1])
+    q1 = get_position_in_segment(l1, qi, maneuver.mode[0])      # Final do segmento 1
+    q2 = get_position_in_segment(l2, q1, maneuver.mode[1])       # Final do segmento 2
 
     if noffset < l1:
         q = get_position_in_segment(noffset, qi, maneuver.mode[0])
@@ -298,12 +299,12 @@ def get_position_in_segment(offset, qi, mode):
 
 def get_sampling_points(maneuver, sampling_size=0.1):
     points = []
-    for offset in np.arange(0.0, maneuver.length + sampling_size, sampling_size):
+    for offset in np.arange(0.0, maneuver.length+sampling_size, sampling_size):
         points.append(get_coordinates(maneuver, offset))
     return points
 
 
-def plot_arrow(x, y, yaw, length=1.0, width=0.5, fc="r", ec="k"):
+def plot_arrow(x, y, yaw, length=1.0, width=0.5, fc="r", ec="k"):  # pragma: no cover
     """
     Plot arrow
     """
@@ -320,8 +321,8 @@ def plot_arrow(x, y, yaw, length=1.0, width=0.5, fc="r", ec="k"):
 if __name__ == '__main__':
     print("Dubins Path Planner Start!!")
 
-    test_qi = [[0.0, 5.0, np.deg2rad(180.0)], [10.0, 5.0, np.deg2rad(180.0)]]  # start_x, start_y, start_yaw
-    test_qf = [[10.0, 5.0, np.deg2rad(180.0)], [0.0, 5.0, np.deg2rad(0.0)]]  # end_x, end_y, end_yaw
+    test_qi = [[0.0, 5.0, np.deg2rad(180.0)], [10.0, 5.0, np.deg2rad(180.0)]]        # start_x, start_y, start_yaw
+    test_qf = [[10.0, 5.0, np.deg2rad(180.0)], [0.0, 5.0, np.deg2rad(0.0)]]       # end_x, end_y, end_yaw
 
     rmin = 1.5
 
@@ -335,6 +336,7 @@ if __name__ == '__main__':
 
     plt.plot(test_maneuver.px, test_maneuver.py, label="test_maneuver " + "".join(test_maneuver.mode))
     # plt.plot(test_maneuver1.px, test_maneuver1.py, label="test_maneuver1 " + "".join(test_maneuver1.mode))
+
 
     # plotting
     plot_arrow(test_qi[0][0], test_qi[0][1], test_qi[0][2])

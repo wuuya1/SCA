@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from math import pi
 from mamp.util import l3norm, l3normsq, takeSecond, sqr
+from mamp.configs.config import DT
 
 
 class Agent(object):
@@ -28,24 +29,27 @@ class Agent(object):
         self.max_heading_change = self.pitchlims[1]
 
         self.neighbors = []
-        self.maxNeighbors = 15
+        self.maxNeighbors = 16
         self.neighborDist = 10.0
-        self.timeStep = dt
+        self.timeStep = DT
         self.timeHorizon = 10.0
         self.maxSpeed = 1.0
         self.maxAccel = 1.0
         self.safetyFactor = 7.5
         self.is_parallel_neighbor = []
         self.is_obstacle = False
-        self.dt_nominal = dt
+        self.dt_nominal = DT
+        self.candinate_num = 256
 
         self.path = []
         self.dubins_path = []
-        self.desire_points_num = int(0)    # For computing Time Rate dubins.
-        self.desire_path_length = None           # For computing Distance Rate dubins.
+        self.travelled_traj_node = []
+        self.num_node = 10
+        self.desire_points_num = int(0)    # for computing time rate dubins
+        self.desire_path_length = None           # for computing distance rate dubins
 
-        self.straight_path_length = l3norm(start_pos[:3], goal_pos[:3])-0.5  # For computing Distance Rate.
-        self.desire_steps = int(self.straight_path_length / (pref_speed*dt))  # For computing Time Rate.
+        self.straight_path_length = l3norm(start_pos[:3], goal_pos[:3])-0.5  # for computing distance rate
+        self.desire_steps = int(self.straight_path_length / (pref_speed*DT))  # for computing time rate
 
         self.dubins_now_goal = None
         self.dubins_last_goal = None
@@ -56,16 +60,18 @@ class Agent(object):
         self.total_time = 0.0
         self.total_dist = 0.0
         self.step_num = 0
+        # self.current_step = 0
+        # self.current_run_dist = 0.0
 
         self.history_pos = {}
-        self.real_path_length = 0.0             # For computing Distance Rate.
+        self.real_path_length = 0.0             # for computing distance rate
         self.is_use_dubins = False
         self.ref_plane = 'XOY'
         self.is_at_goal = False
         self.is_collision = False
         self.is_out_of_max_time = False
         self.is_run_done = False
-        self.max_run_dist = 5.0 * l3norm(start_pos[:3], goal_pos[:3])
+        self.max_run_dist = 3.0 * l3norm(start_pos[:3], goal_pos[:3])
         self.ANIMATION_COLUMNS = ['pos_x', 'pos_y', 'pos_z', 'alpha', 'beta', 'gamma', 'vel_x', 'vel_y', 'vel_z',
                                   'gol_x', 'gol_y', 'gol_z', 'radius']
         self.history_info = pd.DataFrame(columns=self.ANIMATION_COLUMNS)
@@ -73,7 +79,7 @@ class Agent(object):
     def insertAgentNeighbor(self, other_agent, rangeSq):
         if self.id != other_agent.id:
             distSq = l3normsq(self.pos_global_frame, other_agent.pos_global_frame)
-            if distSq < sqr(self.radius + other_agent.radius) and distSq < rangeSq:     # Collision.
+            if distSq < sqr(self.radius + other_agent.radius) and distSq < rangeSq:     # COLLISION!
                 if not self.is_collision:
                     self.is_collision = True
                     self.neighbors.clear()
@@ -93,12 +99,12 @@ class Agent(object):
                     rangeSq = self.neighbors[-1][1]
 
     def insertObstacleNeighbor(self, obstacle, rangeSq):
+        index = self.id
+        ob_index = obstacle.id
         distSq1 = l3normsq(self.pos_global_frame, obstacle.pos_global_frame)
-
-        # It is feasible for the obstacles's radius is more than the neighborDist
+        '''适合半径接近或大于neighborDist的时候'''
         distSq = (l3norm(self.pos_global_frame, obstacle.pos_global_frame)-obstacle.radius)**2
-
-        if distSq1 < sqr(self.radius + obstacle.radius) and distSq < rangeSq:  # Collision.
+        if distSq1 < sqr(self.radius + obstacle.radius) and distSq < rangeSq:  # COLLISION!
             if not self.is_collision:
                 self.is_collision = True
                 self.neighbors.clear()

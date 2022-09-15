@@ -2,8 +2,8 @@
 @ Author: Gang Xu
 @ Date: 2022.04.16
 @ Details: RVO3D+Dubins for multi-agent motion planning
-@ Reference: Reciprocal Velocity Obstacles for Real-Time Multi-Agent Navigation
-@ Github: https://github.com/MengGuo/RVO_Py_MAS
+@ reference: Reciprocal Velocity Obstacles for Real-Time Multi-Agent Navigation
+@ github: https://github.com/MengGuo/RVO_Py_MAS
 """
 import time
 import numpy as np
@@ -22,10 +22,10 @@ class SRVO3DPolicy(object):
 
     def find_next_action(self, dict_comm, agent, kdTree):
         """
-        Function: SRVO3DPolicy compute suitable speed for agents
+        Function: RVO3D compute suitable speed for agents
         """
         start_t = time.time()
-        self.get_trajectory(agent)                          # Update now_goal.
+        self.get_trajectory(agent)                          # update now_goal
         v_pref = compute_v_pref(self.now_goal, agent)
         vA = agent.vel_global_frame
         if l3norm(vA, [0, 0, 0]) <= 1e-5:
@@ -41,6 +41,7 @@ class SRVO3DPolicy(object):
             agent_rad = agent.radius + 0.05
             computeNeighbors(agent, kdTree)
 
+            # for obj in other_objects:
             for obj in agent.neighbors:
                 obj = obj[0]
                 pB = obj.pos_global_frame
@@ -48,7 +49,7 @@ class SRVO3DPolicy(object):
                     transl_vB_vA = pA
                 else:
                     vB = obj.vel_global_frame
-                    transl_vB_vA = pA + 0.5 * (vB + vA)  # Use RVO.
+                    transl_vB_vA = pA + 0.5 * (vB + vA)  # use RVO
                 obj_rad = obj.radius + 0.05
 
                 RVO_BA = [transl_vB_vA, pA, pB, obj_rad + agent_rad]
@@ -62,22 +63,22 @@ class SRVO3DPolicy(object):
 
         dist = round(l3norm(agent.pos_global_frame, agent.goal_global_frame), 5)
         if theta > agent.max_heading_change:
-            print('agent' + str(agent.id), 'Goal distance：', dist, 'Speed:', action[3], 'Dissatisfied Angle', theta)
+            print('-------------agent' + str(agent.id), len(agent.neighbors), theta, action[3], '终点距离:', dist)
         else:
-            print('agent' + str(agent.id), 'Goal distance:', dist, 'Speed:', round(action[3], 5))
+            print('agent' + str(agent.id), len(agent.neighbors), action[3], '终点距离:', dist)
         return action
 
     def get_trajectory(self, agent):
         if agent.path:
-            if self.now_goal is None:  # First
+            if self.now_goal is None:  # first
                 self.now_goal = np.array(agent.path.pop(), dtype='float64')
             dis = l3norm(agent.pos_global_frame, self.now_goal)
             dis_nowgoal_globalgoal = l3norm(self.now_goal, agent.goal_global_frame)
             dis_nowgoal_globalpos = l3norm(agent.pos_global_frame, agent.goal_global_frame)
-            if dis <= self.update_now_goal_dist * agent.radius:  # Free collision.
+            if dis <= self.update_now_goal_dist * agent.radius:  # free collision
                 if agent.path:
                     self.now_goal = np.array(agent.path.pop(), dtype='float64')
-            elif dis_nowgoal_globalgoal >= dis_nowgoal_globalpos:
+            elif dis_nowgoal_globalgoal >= dis_nowgoal_globalpos:  # free back to current now_goal when free collision
                 if agent.path:
                     self.now_goal = np.array(agent.path.pop(), dtype='float64')
         else:
@@ -90,15 +91,15 @@ def computeNeighbors(agent, kdTree):
 
     agent.neighbors.clear()
     rangeSq = agent.neighborDist ** 2
-    # Check obstacle neighbors.
+    # check obstacle neighbors
     kdTree.computeObstacleNeighbors(agent, rangeSq)
-    # Check other agents.
+    # check other agents
     kdTree.computeAgentNeighbors(agent, rangeSq)
 
 
 def shunted_strategy(agent, v_list):
     """
-    @details: The generalized passsing on the right.
+    @details: the generalized passsing on the right
     """
     opt_v = [v_list[0]]
     opti_flag = True
@@ -182,7 +183,7 @@ def compute_v_pref(goal, agent):
 
 
 def intersect(v_pref, RVO_BA_all, agent):
-    num_N = 128
+    num_N = 256
     param_phi = (sqrt(5.0) - 1.0) / 2.0
     min_speed = 0.5
     suitable_V = []
@@ -206,12 +207,13 @@ def intersect(v_pref, RVO_BA_all, agent):
         unsuitable_V.append(new_v)
     # ----------------------
     if suitable_V:
-        suitable_V.sort(key=lambda v: l3norm(v, v_pref))  # Sort begin at minimum and end at maximum.
+        suitable_V.sort(key=lambda v: l3norm(v, v_pref))  # sort begin at minimum and end at maximum
         if len(suitable_V) > 1:
             vA_post = shunted_strategy(agent, suitable_V)
         else:
             vA_post = suitable_V[0]
     else:
+        print('--------------------Suitable not found', 'agent', agent.id, len(suitable_V), len(unsuitable_V))
         tc_V = dict()
         for unsuit_v in unsuitable_V:
             unsuit_v = np.array(unsuit_v)
@@ -219,7 +221,12 @@ def intersect(v_pref, RVO_BA_all, agent):
             tc = compute_without_suitV(agent, RVO_BA_all, unsuit_v)
             tc_V[tuple(unsuit_v)] = min(tc) + 1e-5
         WT = 0.2
-        vA_post = min(unsuitable_V, key=lambda v: ((WT / tc_V[tuple(v)]) + l3norm(v, v_pref)))
+        # vA_post = min(unsuitable_V, key=lambda v: ((WT / tc_V[tuple(v)]) + l3norm(v, v_pref)))
+        unsuitable_V.sort(key=lambda v: ((WT / tc_V[tuple(v)]) + l3norm(v, v_pref)))
+        if len(unsuitable_V) > 1:
+            vA_post = shunted_strategy(agent, unsuitable_V)
+        else:
+            vA_post = unsuitable_V[0]
     vA_post = np.array([int(vA_post[0] * eps) / eps, int(vA_post[1] * eps) / eps, int(vA_post[2] * eps) / eps])
     return vA_post
 

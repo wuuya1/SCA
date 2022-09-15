@@ -2,12 +2,13 @@
 @ Author: Gang Xu
 @ Date: 2022.04.16
 @ Details: KDTree 3D
-@ Reference: Reciprocal n-Body Collision Avoidance*
-@ Github: https://github.com/snape/RVO2-3D
+@ github: https://github.com/snape/RVO2-3D
 """
 
 import numpy as np
-from mamp.util import sqr
+from math import sqrt, sin, cos, atan2, asin, pi, floor, acos, asin
+from itertools import combinations, product
+from mamp.util import l2norm, leftOf, det, l2normsq, sqr
 
 
 class AgentTreeNode(object):
@@ -159,9 +160,10 @@ class KDTree(object):
             self.buildObstacleTreeRecursive(0, len(self.obstacleIDs), 0)
 
     def buildObstacleTreeRecursive(self, begin, end, node):
+        print(begin, end, node)
         self.obstacleTree[node].begin = begin
         self.obstacleTree[node].end = end
-
+        # 不直接用数组进行赋值是因为会指向同一地址，智能体的当前位置也会跟随minCoord, maxCoord改变
         self.obstacleTree[node].minCoord[0] = self.obstacles[self.obstacleIDs[begin]].pos_global_frame[0]
         self.obstacleTree[node].minCoord[1] = self.obstacles[self.obstacleIDs[begin]].pos_global_frame[1]
         self.obstacleTree[node].minCoord[2] = self.obstacles[self.obstacleIDs[begin]].pos_global_frame[2]

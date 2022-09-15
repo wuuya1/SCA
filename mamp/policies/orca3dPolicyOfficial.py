@@ -7,9 +7,9 @@
 """
 import time
 import numpy as np
-from math import sqrt, sin, cos, asin, acos, pi
-from mamp.configs.config import eps, DT
-from mamp.util import distance, absSq, sqr, normalize, l3norm, satisfied_constraint, reached, cartesian2spherical
+from math import sqrt, atan2
+from mamp.configs.config import eps, DT, rvo3d_epsilon
+from mamp.util import distance, absSq, sqr, normalize, reached
 
 
 class Line(object):
@@ -32,7 +32,6 @@ class ORCA3DPolicy(object):
         self.update_nowGoal_dist = 1.0
         self.orcaPlanes = []
         self.type = "internal"
-        self.rvo3d_epsilon = 1e-5
         self.new_velocity = None
 
     def find_next_action(self, dict_comm, agent, kdTree):
@@ -104,9 +103,14 @@ class ORCA3DPolicy(object):
                     u = (combinedRadius * invTimeStep - wLength) * unitW
                     # print('Collision.')
                 plane.point = agent.vel_global_frame + 0.5 * u
-                self.orcaPlanes.append([plane, combinedRadius, relativePosition, obj.vel_global_frame])
+                self.orcaPlanes.append(plane)
 
-            vA_post = intersect(agent, v_pref, self.orcaPlanes)
+            planeFail = self.linearProgram3(self.orcaPlanes, agent.maxSpeed, v_pref)
+
+            if planeFail < len(self.orcaPlanes):
+                self.linearProgram4(self.orcaPlanes, planeFail, agent.maxSpeed)
+
+            vA_post = np.array([self.new_velocity[0], self.new_velocity[1], self.new_velocity[2]])
 
         action = cartesian2spherical(agent, vA_post)
 
@@ -135,7 +139,7 @@ class ORCA3DPolicy(object):
             numerator = np.dot((planes[i].point - line.point), planes[i].normal)
             denominator = np.dot(line.direction, planes[i].normal)
 
-            if sqr(denominator) <= self.rvo3d_epsilon:
+            if sqr(denominator) <= rvo3d_epsilon:
                 # Lines line is (almost) parallel to plane i.
                 if numerator > 0.0:
                     return False
@@ -194,7 +198,7 @@ class ORCA3DPolicy(object):
             planeOptVelocity = vel_pref - np.dot(vel_pref, planes[planeNo].normal) * planes[planeNo].normal
             planeOptVelocityLengthSq = absSq(planeOptVelocity)
 
-            if planeOptVelocityLengthSq <= self.rvo3d_epsilon:
+            if planeOptVelocityLengthSq <= rvo3d_epsilon:
                 self.new_velocity = planeCenter
             else:
                 self.new_velocity = planeCenter + sqrt(planeRadiusSq / planeOptVelocityLengthSq) * planeOptVelocity
@@ -216,12 +220,12 @@ class ORCA3DPolicy(object):
                 # Compute intersection line of plane i and plane planeNo.
                 crossProduct = np.cross(planes[i].normal, planes[planeNo].normal)
 
-                if absSq(crossProduct) <= self.rvo3d_epsilon:
+                if absSq(crossProduct) <= rvo3d_epsilon:
                     # Planes planeNo and i are (almost) parallel, and plane i fully invalidates plane planeNo.
                     return False
 
                 line = Line()
-                line.direction = crossProduct / np.linalg.norm(crossProduct)
+                line.direction = normalize(crossProduct)
                 lineNormal = np.cross(line.direction, planes[planeNo].normal)
                 dot_product1 = np.dot((planes[i].point - planes[planeNo].point), planes[i].normal)
                 dot_product2 = np.dot(lineNormal, planes[i].normal)
@@ -244,15 +248,15 @@ class ORCA3DPolicy(object):
             self.new_velocity = vel_pref
 
         for i in range(len(planes)):
-            if np.dot(planes[i].normal, (planes[i].point - self.new_velocity)) > 0.0:  # new_velocity不在ORCA内部
-                # Resu0lt does not satisfy constraint i. Compute new optimal result.
+            if np.dot(planes[i].normal, (planes[i].point - self.new_velocity)) > 0.0:   # new_velocity不在ORCA内部
+                # Result does not satisfy constraint i. Compute new optimal result.
                 tempResult = self.new_velocity
 
                 if not self.linearProgram2(planes, i, maxSpeed, vel_pref, dir_opt):
                     self.new_velocity = tempResult
-                    return i  # 没有找到最优解，在find_next_action里面用线性规划linearProgram4找
+                    return i    # 没有找到最优解，在find_next_action里面用线性规划linearProgram4找
 
-        return len(planes)  # 满足约束条件，找到最优解
+        return len(planes)      # 满足约束条件，找到最优解
 
     def linearProgram4(self, planes, beginPlane, radius):
 
@@ -266,7 +270,7 @@ class ORCA3DPolicy(object):
 
                     crossProduct = np.cross(planes[j].normal, planes[i].normal)
 
-                    if absSq(crossProduct) <= self.rvo3d_epsilon:
+                    if absSq(crossProduct) <= rvo3d_epsilon:
                         # Plane i and plane j are (almost) parallel.
                         if np.dot(planes[i].normal, planes[j].normal) > 0.0:
                             # Plane i and plane j point in the same direction.
@@ -312,27 +316,6 @@ class ORCA3DPolicy(object):
             self.now_goal = agent.goal_global_frame
 
 
-def is_intersect(pApB, combined_radius, v_dif):
-    pAB = pApB
-    dist_pAB = np.linalg.norm(pAB)
-    if dist_pAB <= combined_radius:
-        dist_pAB = combined_radius
-    theta_pABBound = asin(combined_radius / dist_pAB)
-    theta_pABvCand = acos(np.dot(pAB, v_dif) / (dist_pAB * np.linalg.norm(v_dif)))
-    if theta_pABBound <= theta_pABvCand:  # 不相交或者相切
-        return False
-    else:
-        return True
-
-
-def is_inORCA(orcaPlane, combined_radius, new_v):
-    relativeVelocity = new_v - orcaPlane.point
-    if np.dot(relativeVelocity, orcaPlane.normal) >= 0.0:  # 不相交或者相切
-        return True
-    else:
-        return False
-
-
 def computeNeighbors(agent, kdTree):
     if agent.is_collision:
         return
@@ -343,6 +326,20 @@ def computeNeighbors(agent, kdTree):
     kdTree.computeObstacleNeighbors(agent, rangeSq)
     # check other agents
     kdTree.computeAgentNeighbors(agent, rangeSq)
+
+
+def cartesian2spherical(agent, vA_post):
+    speed = distance(vA_post, [0, 0, 0])
+    if speed < 0.001:
+        alpha = 0.0
+        beta = 0.0
+        gamma = 0.0
+    else:
+        alpha = atan2(vA_post[1], vA_post[0]) - agent.heading_global_frame[0]
+        beta = atan2(vA_post[2], sqrt(pow(vA_post[0], 2) + pow(vA_post[1], 2))) - agent.heading_global_frame[1]
+        gamma = 0.0
+    action = [vA_post[0], vA_post[1], vA_post[2], speed, alpha, beta, gamma]
+    return action
 
 
 def compute_v_pref(goal, agent):
@@ -360,83 +357,6 @@ def compute_v_pref(goal, agent):
     agent.v_pref = v_pref
     V_des = np.array([int(v_pref[0] * eps) / eps, int(v_pref[1] * eps) / eps, int(v_pref[2] * eps) / eps])
     return V_des
-
-
-def compute_newV_is_suit(agent, orcaPlanes, new_v):
-    suit = True
-    if len(orcaPlanes) == 0:
-        if not satisfied_constraint(agent, new_v):
-            suit = False
-            return suit
-
-    for orcaOb in orcaPlanes:
-        orcaPlane = orcaOb[0]
-        combined_radius = orcaOb[1]
-        if not is_inORCA(orcaPlane, combined_radius, new_v) or not satisfied_constraint(agent, new_v):
-            suit = False
-            break
-    return suit
-
-
-def compute_without_suitV(agent, orcaPlanes, unsuit_v):
-    tc = []
-    for orcaOB in orcaPlanes:
-        combined_radius = orcaOB[1]
-        pApB = orcaOB[2]
-        vA = agent.vel_global_frame
-        vB = orcaOB[3]
-        v_dif = np.array(unsuit_v - 0.5 * (vA + vB)) if np.linalg.norm(vB) > 1e-5 else np.array(unsuit_v)
-        if is_intersect(pApB, combined_radius, v_dif) and satisfied_constraint(agent, unsuit_v):
-            discr = sqr(np.dot(v_dif, pApB)) - absSq(v_dif) * (absSq(pApB) - sqr(combined_radius))
-            tc_v = (np.dot(v_dif, pApB) - sqrt(discr)) / absSq(v_dif)
-            if tc_v < 0:
-                tc_v = 0.0
-            tc.append(tc_v)
-    if len(tc) == 0:
-        tc = [0.0]
-    return tc
-
-
-def intersect(agent, v_pref, orcaPlanes):
-    num_N = 256
-    param_phi = (sqrt(5.0) - 1.0) / 2.0
-    min_speed = 0.5
-    suitable_V = []
-    unsuitable_V = []
-    for rad in np.arange(min_speed, agent.pref_speed + 0.03, agent.pref_speed - min_speed):
-        for n in range(1, num_N + 1):
-            z_n = (2 * n - 1) / num_N - 1
-            x_n = sqrt(1 - z_n ** 2) * cos(2 * pi * n * param_phi)
-            y_n = sqrt(1 - z_n ** 2) * sin(2 * pi * n * param_phi)
-            new_v = np.array([rad * x_n, rad * y_n, rad * z_n])
-            suit = compute_newV_is_suit(agent, orcaPlanes, new_v)
-            if suit:
-                suitable_V.append(new_v)
-            else:
-                unsuitable_V.append(new_v)
-    new_v = v_pref[:]
-    suit = compute_newV_is_suit(agent, orcaPlanes, new_v)
-    if suit:
-        suitable_V.append(new_v)
-    else:
-        unsuitable_V.append(new_v)
-    # ----------------------
-    if suitable_V:
-        # print('111--------------------Suitable be found', 'agent'+str(agent.id), len(suitable_V), len(unsuitable_V))
-        suitable_V.sort(key=lambda v: l3norm(v, v_pref))  # sort begin at minimum and end at maximum
-        vA_post = suitable_V[0]
-    else:
-        # print('222-------------------Suitable not found', 'agent'+str(agent.id), len(suitable_V), len(unsuitable_V))
-        tc_V = dict()
-        for unsuit_v in unsuitable_V:
-            unsuit_v = np.array(unsuit_v)
-            tc_V[tuple(unsuit_v)] = 0
-            tc = compute_without_suitV(agent, orcaPlanes, unsuit_v)
-            tc_V[tuple(unsuit_v)] = min(tc) + 1e-5
-        WT = 0.2
-        vA_post = min(unsuitable_V, key=lambda v: ((WT / tc_V[tuple(v)]) + l3norm(v, v_pref)))
-    vA_post = np.array([int(vA_post[0] * eps) / eps, int(vA_post[1] * eps) / eps, int(vA_post[2] * eps) / eps])
-    return vA_post
 
 
 if __name__ == "__main__":

@@ -2,9 +2,9 @@
 @ Author: Gang Xu
 @ Date: 2022.04.16
 @ Details: SCA for multi-agent motion planning
-@ Reference: 2020 ICRA Minimal 3D Dubins Path with Bounded Curvature and Pitch Angle
-@ Reference: Reciprocal Velocity Obstacles for Real-Time Multi-Agent Navigation
-@ Github: https://github.com/MengGuo/RVO_Py_MAS
+@ reference: 2020 ICRA Minimal 3D Dubins Path with Bounded Curvature and Pitch Angle
+@ reference: Reciprocal Velocity Obstacles for Real-Time Multi-Agent Navigation
+@ github: https://github.com/MengGuo/RVO_Py_MAS
 """
 import time
 import numpy as np
@@ -25,10 +25,10 @@ class SCAPolicy(object):
 
     def find_next_action(self, dict_comm, agent, kdTree):
         """
-        Function: SCAPolicy compute suitable speed for agents
+        Function: SCA compute suitable speed for agents
         """
         start_t = time.time()
-        self.get_trajectory(agent)  # Update now_goal.
+        self.get_trajectory(agent)  # update now_goal
         v_pref = compute_v_pref(agent)
         vA = agent.vel_global_frame
         if l3norm(vA, [0, 0, 0]) <= 1e-5:
@@ -43,14 +43,17 @@ class SCAPolicy(object):
             RVO_BA_all = []
             agent_rad = agent.radius + 0.05
             computeNeighbors(agent, kdTree)
+            # for obj in other_objects:
             for obj in agent.neighbors:
                 obj = obj[0]
                 pB = obj.pos_global_frame
+                vB = obj.vel_global_frame
+                # tc_B = 0.2
+                # pB_pred = pB + vB * tc_B
                 if obj.is_at_goal:
                     transl_vB_vA = pA
                 else:
-                    vB = obj.vel_global_frame
-                    transl_vB_vA = pA + 0.5 * (vB + vA)  # Use RVO.
+                    transl_vB_vA = pA + 0.5 * (vB + vA)  # use RVO
                 obj_rad = obj.radius + 0.05
 
                 RVO_BA = [transl_vB_vA, pA, pB, obj_rad + agent_rad]
@@ -63,23 +66,23 @@ class SCAPolicy(object):
             theta = acos(min(np.dot(vA, vA_post) / (np.linalg.norm(vA) * np.linalg.norm(vA_post)), 1.0))
 
         dist = round(l3norm(agent.pos_global_frame, agent.goal_global_frame), 5)
-        if theta > agent.max_heading_change:
-            print('agent' + str(agent.id), 'Goal distance：', dist, 'Speed:', action[3], 'Dissatisfied Angle', theta)
+        if theta > round(agent.max_heading_change, 5):
+            print('-------------agent' + str(agent.id), len(agent.neighbors), theta, action[3], '终点距离:', dist)
         else:
-            print('agent' + str(agent.id), 'Goal distance:', dist, 'Speed:', round(action[3], 5))
+            print('agent' + str(agent.id), len(agent.neighbors), action[3], '终点距离:', dist)
         return action
 
     def get_trajectory(self, agent):
         if agent.path:
-            if self.now_goal is None:  # First
+            if self.now_goal is None:  # first
                 self.now_goal = np.array(agent.path.pop(), dtype='float64')
             dis = l3norm(agent.pos_global_frame, self.now_goal)
             dis_nowgoal_globalgoal = l3norm(self.now_goal, agent.goal_global_frame)
             dis_nowgoal_globalpos = l3norm(agent.pos_global_frame, agent.goal_global_frame)
-            if dis <= self.update_now_goal_dist * agent.radius:  # Free collision.
+            if dis <= self.update_now_goal_dist * agent.radius:  # free collision
                 if agent.path:
                     self.now_goal = np.array(agent.path.pop(), dtype='float64')
-            elif dis_nowgoal_globalgoal >= dis_nowgoal_globalpos:
+            elif dis_nowgoal_globalgoal >= dis_nowgoal_globalpos:  # free back to current now_goal when free collision
                 if agent.path:
                     self.now_goal = np.array(agent.path.pop(), dtype='float64')
         else:
@@ -107,13 +110,13 @@ def computeNeighbors(agent, kdTree):
 
     agent.neighbors.clear()
     rangeSq = agent.neighborDist ** 2
-    # Check obstacle neighbors.
+    # check obstacle neighbors
     kdTree.computeObstacleNeighbors(agent, rangeSq)
-    # Check other agents.
+    # check other agents
     kdTree.computeAgentNeighbors(agent, rangeSq)
 
 
-def shunted_strategy(agent, v_list):
+def shunted_strategy(agent, v_list, threshold=5e-2):
     """
     @details: the generalized passsing on the right
     """
@@ -122,13 +125,14 @@ def shunted_strategy(agent, v_list):
     vA = agent.vel_global_frame
     i = 1
     while opti_flag:
-        if abs(l3norm(v_list[0], vA) - l3norm(v_list[i], vA)) < 5e-2:
+        if abs(l3norm(v_list[0], vA) - l3norm(v_list[i], vA)) < threshold:  # 5e-2效果极好, 其他数值比不过
             opt_v.append(v_list[i])
             i += 1
             if i == len(v_list):
                 break
         else:
             break
+    # print('-----------------------------------', len(v_list), len(opt_v))
     vA_phi_min = min(opt_v, key=lambda v: get_phi(v))
     vA_phi_max = max(opt_v, key=lambda v: get_phi(v))
     opt_v_best = [vA_phi_min, vA_phi_max]
@@ -181,7 +185,9 @@ def compute_newV_is_suit(agent, RVO_BA_all, new_v):
 
 
 def intersect(v_pref, RVO_BA_all, agent):
-    num_N = 128
+    p0pA = agent.goal_pos[:3] - agent.initial_pos[:3]
+    is_zAxis = abs(np.dot(p0pA, [1.0, 0.0, 0.0])) <= 1e-5 and abs(np.dot(p0pA, [0.0, 1.0, 0.0])) <= 1e-5
+    num_N = 256 if not is_zAxis else 128
     param_phi = (sqrt(5.0) - 1.0) / 2.0
     min_speed = 0.5
     suitable_V = []
@@ -203,14 +209,20 @@ def intersect(v_pref, RVO_BA_all, agent):
         suitable_V.append(new_v)
     else:
         unsuitable_V.append(new_v)
+
+    # therehold_rate = len(agent.neighbors) / agent.maxNeighbors
+    threshold = 3e-2
+    # if len(agent.neighbors) <= 14:
+    #     threshold = 3e-2
     # ----------------------
     if suitable_V:
-        suitable_V.sort(key=lambda v: l3norm(v, v_pref))  # Sort begin at minimum and end at maximum.
+        suitable_V.sort(key=lambda v: l3norm(v, v_pref))  # sort begin at minimum and end at maximum
         if len(suitable_V) > 1:
-            vA_post = shunted_strategy(agent, suitable_V)
+            vA_post = shunted_strategy(agent, suitable_V, threshold=threshold)
         else:
             vA_post = suitable_V[0]
     else:
+        print('--------------------Suitable not found', 'agent', agent.id, len(suitable_V), len(unsuitable_V))
         tc_V = dict()
         for unsuit_v in unsuitable_V:
             unsuit_v = np.array(unsuit_v)
@@ -218,7 +230,12 @@ def intersect(v_pref, RVO_BA_all, agent):
             tc = compute_without_suitV(agent, RVO_BA_all, unsuit_v)
             tc_V[tuple(unsuit_v)] = min(tc) + 1e-5
         WT = 0.2
-        vA_post = min(unsuitable_V, key=lambda v: ((WT / tc_V[tuple(v)]) + l3norm(v, v_pref)))
+        # vA_post = min(unsuitable_V, key=lambda v: ((WT / tc_V[tuple(v)]) + l3norm(v, v_pref)))
+        unsuitable_V.sort(key=lambda v: ((WT / tc_V[tuple(v)]) + l3norm(v, v_pref)))
+        if len(unsuitable_V) > 1:
+            vA_post = shunted_strategy(agent, unsuitable_V, threshold=5e-2)
+        else:
+            vA_post = unsuitable_V[0]
     vA_post = np.array([int(vA_post[0] * eps) / eps, int(vA_post[1] * eps) / eps, int(vA_post[2] * eps) / eps])
     return vA_post
 
@@ -234,23 +251,37 @@ def update_dubins(agent):
 
 
 def dubins_path_node_pop(agent):
-    agent.dubins_last_goal = np.array(agent.dubins_path.pop()[:3], dtype='float64')
-    agent.dubins_last_goal = np.array(agent.dubins_path.pop()[:3], dtype='float64')
-    agent.dubins_last_goal = np.array(agent.dubins_path.pop()[:3], dtype='float64')
-    agent.dubins_last_goal = np.array(agent.dubins_path.pop()[:3], dtype='float64')
+    if agent.dubins_path:
+        agent.dubins_last_goal = np.array(agent.dubins_path.pop()[:3], dtype='float64')
+    if agent.dubins_path:
+        agent.dubins_last_goal = np.array(agent.dubins_path.pop()[:3], dtype='float64')
+    if agent.dubins_path:
+        agent.dubins_last_goal = np.array(agent.dubins_path.pop()[:3], dtype='float64')
+    if agent.dubins_path:
+        agent.dubins_last_goal = np.array(agent.dubins_path.pop()[:3], dtype='float64')
 
 
 def compute_v_pref(agent):
     """
-        is_parallel(vA, v_pref): —— Whether to leave Dubins trajectory as collision avoidance.
-        dis_goal <= k: —— Regard as obstacles-free when the distance is less than k.
-        dis < 6 * sampling_size: —— Follow the current Dubins path when not moving away from the current Dubins path.
-        theta >= np.deg2rad(100): —— Avoid the agent moving away from the goal position after update Dubins path.
+        is_parallel(vA, v_pref) —— 判断是否因为避碰离开Dubins轨迹
+        dis_goal <= k —— 小于一定距离的时候默认无障碍物
+        dis < 5 * sampling_size —— 当避碰行为没有导致远离原Dubins曲线, 继续跟踪原Dubins曲线
+        theta >= np.deg2rad(100) —— 避免更新Dubins曲线之后一直更新导致智能体离目标越来越远
     """
     dis_goal = l3norm(agent.pos_global_frame, agent.goal_global_frame)
     k = 3.0 * agent.turning_radius
     if not agent.is_use_dubins:  # first
         agent.is_use_dubins = True
+        dubins_path, desire_length, points_num = compute_dubins(agent)
+        agent.dubins_path = dubins_path
+        dubins_path_node_pop(agent)
+        agent.dubins_now_goal = np.array(agent.dubins_path.pop()[:3], dtype='float64')
+        dif_x = agent.dubins_now_goal - agent.pos_global_frame
+    elif agent.is_back2start and dis_goal <= 1.5 * NEAR_GOAL_THRESHOLD:  # 返回起点区域, 朝向角和初始状态一致
+        agent.is_back2start = False
+        agent.goal_global_frame = agent.initial_pos[:3]
+        agent.goal_heading_frame = agent.initial_heading
+        # dif_x = agent.goal_global_frame - agent.pos_global_frame
         dubins_path, desire_length, points_num = compute_dubins(agent)
         agent.dubins_path = dubins_path
         dubins_path_node_pop(agent)
@@ -269,14 +300,26 @@ def compute_v_pref(agent):
         p0pA = agent.goal_pos[:3] - agent.initial_pos[:3]
         is_zAxis = abs(np.dot(p0pA, [1.0, 0.0, 0.0])) <= 1e-5 and abs(np.dot(p0pA, [0.0, 1.0, 0.0])) <= 1e-5
         condition_dist = (min_dist_ob >= 2.0 * agent.turning_radius) if is_zAxis else False
-
+        # dist_10_seq = False
+        # if len(agent.travelled_traj_node) == agent.num_node:
+        #     dis1 = l3norm(agent.travelled_traj_node[0], agent.goal_global_frame)
+        #     # dis2 = l3norm(agent.travelled_traj_node[1], agent.goal_global_frame)
+        #     # dis3 = l3norm(agent.travelled_traj_node[2], agent.goal_global_frame)
+        #     # dis4 = l3norm(agent.travelled_traj_node[3], agent.goal_global_frame)
+        #     # dis5 = l3norm(agent.travelled_traj_node[4], agent.goal_global_frame)
+        #
+        #     dis = l3norm(agent.travelled_traj_node[-1], agent.goal_global_frame)
+        #     dist_10_seq = dis1 < dis
         if ((is_parallel(vA, v_pref) or dis_goal <= k) and dis < max_size) or (theta >= deg100) or condition_dist:
             update_dubins(agent)
             if agent.dubins_path:
                 dif_x = agent.dubins_now_goal - agent.pos_global_frame
+                # print('--------------', 111, is_parallel(vA, v_pref), condition_dist)
             else:
                 dif_x = agent.goal_global_frame - agent.pos_global_frame
+                # print('--------------', 222, is_parallel(vA, v_pref), condition_dist)
         else:
+            # print('----------------------------------', 333, is_parallel(vA, v_pref), condition_dist)
             dubins_path, length, points_num = compute_dubins(agent)
             agent.dubins_path = dubins_path
             dubins_path_node_pop(agent)
@@ -291,8 +334,8 @@ def compute_v_pref(agent):
         v_pref[1] = 0.0
         v_pref[2] = 0.0
     agent.v_pref = v_pref
-    v_pref = np.array([int(v_pref[0] * eps) / eps, int(v_pref[1] * eps) / eps, int(v_pref[2] * eps) / eps])
-    return v_pref
+    V_des = np.array([int(v_pref[0] * eps) / eps, int(v_pref[1] * eps) / eps, int(v_pref[2] * eps) / eps])
+    return V_des
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ class MACAEnv(object):
         num_actions_per_agent = 7  # vx, vy, vz, speed, alpha, beta, gamma
         all_actions = np.zeros((len(self.agents), num_actions_per_agent), dtype=np.float32)
 
-        # Update velocity and position.
+        # update for velocity and position
         for agent_index, agent in enumerate(self.agents):
             if agent.is_at_goal or agent.is_collision or agent.is_out_of_max_time:
                 continue
@@ -43,7 +43,7 @@ class MACAEnv(object):
             update_velocitie(agent, all_actions[i, :])
             if not agent.is_at_goal:
                 agent.step_num += 1
-            self.check_agent_state(agent)  # Check collision.
+            self.check_agent_state(agent)  # check collision
         for i, agent in enumerate(self.agents):
             if agent.is_collision:
                 print('agent' + str(agent.id) + ': collision')
@@ -59,11 +59,12 @@ class MACAEnv(object):
         return check_is_done_condition
 
     def check_agent_state(self, agent):
-        # Check collision.
+        # check collision
         for ob in self.obstacles:
             dis_a_ob = l3norm(agent.pos_global_frame, ob.pos_global_frame)
             if dis_a_ob <= (agent.radius + ob.radius):
                 agent.is_collision = True
+                # print('collision: agent' + str(agent.id) + ' and obstacle' + str(ob.id))
         for ag in self.agents:
             if ag.id == agent.id: continue
             dis_a_agent = l3norm(agent.pos_global_frame, ag.pos_global_frame)
@@ -72,7 +73,9 @@ class MACAEnv(object):
                     ag.is_collision = True
                 if not agent.is_at_goal:
                     agent.is_collision = True
+                # print('collision: agent' + str(agent.id) + ' and agent' + str(ag.id))
         if agent.total_dist > agent.max_run_dist:
+            # print(agent.total_dist, agent.max_run_dist)
             agent.is_out_of_max_time = True
             print(' agent' + str(agent.id) + ' is_out_of_max_time')
 
@@ -90,6 +93,12 @@ def update_velocitie(agent, action):
     length = sqrt(dx ** 2 + dy ** 2 + dz ** 2)
     agent.total_dist += length
     agent.pos_global_frame += np.array([dx, dy, dz])
+
+    if len(agent.travelled_traj_node) == agent.num_node:
+        agent.travelled_traj_node.pop(0)
+        agent.travelled_traj_node.append(agent.pos_global_frame)
+    else:
+        agent.travelled_traj_node.append(agent.pos_global_frame)
 
     agent.heading_global_frame = [selected_alpha_heading, selected_beta_heading, selected_gamma_heading]
     agent.vel_global_frame = np.array(action[:3])

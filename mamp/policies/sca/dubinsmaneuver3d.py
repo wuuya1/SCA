@@ -83,7 +83,7 @@ def dubinsmaneuver3d(qi, qf, Rmin, pitchlims):
         if len(fb) < 2:
             print("No maneuver exists")
 
-    # Local optimization between horizontal and vertical radii.
+    # Local optimization between horizontal and vertical radii
     step = 0.1
     while abs(step) > 1e-10:
         c = b + step
@@ -104,8 +104,11 @@ def dubinsmaneuver3d(qi, qf, Rmin, pitchlims):
     mode = fb[0].mode + fb[1].mode
     mode3d = mode3d.join(mode)
     maneuver3d.mode = mode3d
+    # draw_dubins2d(fb[0])
+    # draw_dubins2d(fb[1])
+    # print(mode3d)
 
-    compute_sampling(maneuver3d, sampling_size=0.1)    # Get coordinate.
+    compute_sampling(maneuver3d, sampling_size=0.1)    # get coordinate
 
     return maneuver3d
 
@@ -114,7 +117,7 @@ def compute_sampling(maneuver3d, sampling_size=np.deg2rad(6.0)):
     maneuver_h, maneuver_v = maneuver3d.maneuvers2d
     if maneuver3d.length > 100:
         sampling_size = maneuver3d.length / 1000
-    # Sample points on the final path.
+    # Sample points on the final path
     maneuver3d.sampling_size = sampling_size
     qi = maneuver3d.qi
     for ran in np.arange(0, maneuver3d.length + sampling_size, sampling_size):
@@ -135,7 +138,7 @@ def try_to_construct(maneuver3d, horizontal_radius):
 
     maneuver_h = dubins_path_planning(qi2D, qf2D, horizontal_radius)
 
-    # After finding a long enough 2D curve, calculate the Dubins path on SZ axis.
+    # After finding a long enough 2D curve, calculate the Dubins path on SZ axis
     qi3D = [0.0, maneuver3d.qi[2], maneuver3d.qi[4]]
     qf3D = [maneuver_h.length, maneuver3d.qf[2], maneuver3d.qf[4]]
 
@@ -156,7 +159,7 @@ def try_to_construct(maneuver3d, horizontal_radius):
     else:
         if maneuver3d.qi[4] + maneuver_v.t > maneuver3d.pitchlims[1]:
             return []
-    return [maneuver_h, maneuver_v]  # Final 3D path is formed by the two curves (maneuver_h, maneuver_v).
+    return [maneuver_h, maneuver_v]  # Final 3D path is formed by the two curves (maneuver_h, maneuver_v)
 
 
 def set_ax(ax):
@@ -224,7 +227,7 @@ if __name__ == '__main__':
     test_pitchlims = [np.deg2rad(-45.0), np.deg2rad(45.0)]
     test_Rmin = 1.5
 
-    '''Instance from paper is true where the length is 976.79'''
+    '''instance from paper is true where the length is 976.79'''
     # test_qi = [-80.0, 10.0, 250.0, np.deg2rad(20.0), np.deg2rad(0.0)]
     # test_qf = [50.0, 70.0, 0.0, np.deg2rad(240.0), np.deg2rad(0.0)]
     # test_pitchlims = [np.deg2rad(-15.0), np.deg2rad(20.0)]
