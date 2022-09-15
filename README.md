@@ -12,7 +12,7 @@ We present an approach for fixed-wing UAVs' collision avoidance, where multiple 
 About
 -----
 
-**Paper**:  Shunted Collision Avoidance for Multiple Fixed-Wing UAVs Motion Planning, Gang Xu, Junjie Cao\*, Deye Zhu,  Yong Liu\*, and Jian Yang, Submitted in IEEE Robotics and Automation Letters (**RA-L**).
+**Paper**:  Shunted Collision Avoidance for Multi-UAV Motion Planning with Posture Constraints, Gang Xu, Junjie Cao\*, Deye Zhu,  Yong Liu\*, and Jian Yang
 
 
 -----
@@ -77,13 +77,6 @@ For the test, you can select the scenarios, including circle, random, take-off a
 
 
 
-
-----
-
-References 
-----
-
-* Papers on [RVO](https://www.cs.unc.edu/~geom/RVO/icra2008.pdf), [ORCA](https://gamma.cs.unc.edu/S-AIRPLANE/S-AIRPLANE.pdf).
 
 
 ----
