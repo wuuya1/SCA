@@ -41,25 +41,37 @@ For the test, you can select the scenarios, including circle, random, take-off a
 #### The scenario of circle for simulating air patrol task.
 
 <p align="center">
-    <img src="visualization/figs/example1.gif" width="800" height="350" />
+    <img src="visualization/figs/figexp11.png" width="800" height="400" />
 </p>
+
+<p align="center">
+    <img src="visualization/figs/figexp12.png" width="800" height="400" />
+</p>
+
 
 
 #### The scenario of take-off and landing.
 
 <p align="center">
-    <img src="visualization/figs/example21.gif" width="800" height="400" />
+    <img src="visualization/figs/figexp21.png" width="800" height="400" />
 </p>
+
 <p align="center">
-    <img src="visualization/figs/example22.gif" width="800" height="400" />
+    <img src="visualization/figs/figexp22.png" width="800" height="400" />
 </p>
+
 
 
 #### The scenario of circle for simulating low altitude flying for search task.
 
 <p align="center">
-    <img src="visualization/figs/example3.png" width="800" height="400" />
+    <img src="visualization/figs/figexp31.png" width="800" height="400" />
 </p>
+
+<p align="center">
+    <img src="visualization/figs/figexp32.png" width="800" height="400" />
+</p>
+
 
 
 #### Results of Comparison 1 (Ours: S-RVO3D):
